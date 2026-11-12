@@ -4,13 +4,14 @@ const cors = require("cors");
 const axios = require("axios");
 require("dotenv").config();
 
-// testing 
+// =====================================
+// INITIAL SETUP
+// =====================================
+
 console.log(
   "Geoapify API Key Loaded:",
   !!process.env.GEOAPIFY_API_KEY
 );
-
-
 
 const app = express();
 
@@ -28,7 +29,8 @@ const MOOD_RULES = {
       "leisure.park",
       "tourism.attraction"
     ],
-    suggestion: "Enjoy your happiness with fun places and outdoor experiences! ☀️"
+    suggestion:
+      "Enjoy your happiness with fun places and outdoor experiences! ☀️"
   },
 
   sad: {
@@ -37,7 +39,8 @@ const MOOD_RULES = {
       "natural",
       "catering.cafe"
     ],
-    suggestion: "A peaceful environment and some fresh air might help. 🌿"
+    suggestion:
+      "A peaceful environment and some fresh air might help. 🌿"
   },
 
   stressed: {
@@ -46,7 +49,8 @@ const MOOD_RULES = {
       "natural",
       "catering.cafe"
     ],
-    suggestion: "Take a break and enjoy some peaceful surroundings. 🌸"
+    suggestion:
+      "Take a break and enjoy some peaceful surroundings. 🌸"
   },
 
   romantic: {
@@ -55,7 +59,8 @@ const MOOD_RULES = {
       "catering.cafe",
       "tourism.attraction"
     ],
-    suggestion: "Find a beautiful place to spend quality time together. 💕"
+    suggestion:
+      "Find a beautiful place to spend quality time together. 💕"
   },
 
   adventurous: {
@@ -64,7 +69,8 @@ const MOOD_RULES = {
       "sport",
       "natural"
     ],
-    suggestion: "Explore somewhere new and exciting! 🏕️"
+    suggestion:
+      "Explore somewhere new and exciting! 🏕️"
   },
 
   bored: {
@@ -73,7 +79,8 @@ const MOOD_RULES = {
       "tourism.attraction",
       "catering.cafe"
     ],
-    suggestion: "Discover something fun and interesting to do! 🎯"
+    suggestion:
+      "Discover something fun and interesting to do! 🎯"
   },
 
   energetic: {
@@ -82,7 +89,8 @@ const MOOD_RULES = {
       "tourism.attraction",
       "leisure.park"
     ],
-    suggestion: "Use your energy for an exciting experience! ⚡"
+    suggestion:
+      "Use your energy for an exciting experience! ⚡"
   },
 
   calm: {
@@ -91,7 +99,8 @@ const MOOD_RULES = {
       "leisure.park",
       "catering.cafe"
     ],
-    suggestion: "Enjoy a calm and relaxing experience. 🍃"
+    suggestion:
+      "Enjoy a calm and relaxing experience. 🍃"
   }
 };
 
@@ -100,7 +109,6 @@ const MOOD_RULES = {
 // =====================================
 
 // All costs are illustrative estimates in INR.
-// They are not actual venue prices.
 
 const COST_RULES = [
   {
@@ -261,16 +269,13 @@ function recommendPlaces({
     };
   });
 
-  // First remove places that exceed the estimated
-  // minimum cost of the user's budget.
+  // Filter places according to budget
 
   const budgetMatches = scoredPlaces.filter(
     place => place.budgetFit
   );
 
-  // Prefer places that also fit available time.
-  // If none fit, retain budget-matching places and
-  // clearly indicate their timeFit status.
+  // Prefer places that fit available time
 
   const timeMatches = budgetMatches.filter(
     place => place.timeFit
@@ -302,9 +307,12 @@ app.post("/api/analyze-mood", async (req, res) => {
 
     // Validate input
 
-    if (!mood || !location || budget === undefined ||
-        availableTime === undefined) {
-
+    if (
+      !mood ||
+      !location ||
+      budget === undefined ||
+      availableTime === undefined
+    ) {
       return res.status(400).json({
         success: false,
         error: "Mood, location, budget and available time are required."
@@ -401,8 +409,11 @@ app.post("/api/analyze-mood", async (req, res) => {
 
       const p = feature.properties;
 
-      const placeLat = p.lat ?? feature.geometry.coordinates[1];
-      const placeLon = p.lon ?? feature.geometry.coordinates[0];
+      const placeLat =
+        p.lat ?? feature.geometry.coordinates[1];
+
+      const placeLon =
+        p.lon ?? feature.geometry.coordinates[0];
 
       const distance = p.distance ??
         calculateDistance(
@@ -479,9 +490,6 @@ app.post("/api/analyze-mood", async (req, res) => {
 
       recommendations,
 
-      // Keep "places" for compatibility with
-      // your existing React frontend.
-
       places: recommendations,
 
       message: recommendations.length
@@ -512,24 +520,122 @@ app.post("/api/analyze-mood", async (req, res) => {
 });
 
 // =====================================
-// 8. SERVER HEALTH CHECK
+// 8. GET CURRENT LOCATION ADDRESS
+// =====================================
+
+app.post("/api/reverse-geocode", async (req, res) => {
+
+  try {
+
+    const { latitude, longitude } = req.body;
+
+    if (
+      latitude === undefined ||
+      longitude === undefined ||
+      !Number.isFinite(Number(latitude)) ||
+      !Number.isFinite(Number(longitude)) ||
+      Number(latitude) < -90 ||
+      Number(latitude) > 90 ||
+      Number(longitude) < -180 ||
+      Number(longitude) > 180
+    ) {
+      return res.status(400).json({
+        success: false,
+        error: "Valid latitude and longitude are required."
+      });
+    }
+
+    if (!process.env.GEOAPIFY_API_KEY) {
+      return res.status(500).json({
+        success: false,
+        error: "Geoapify API key is missing."
+      });
+    }
+
+    // Convert coordinates into readable address
+
+    const response = await axios.get(
+      "https://api.geoapify.com/v1/geocode/reverse",
+      {
+        params: {
+          lat: latitude,
+          lon: longitude,
+          format: "json",
+          apiKey: process.env.GEOAPIFY_API_KEY
+        },
+        timeout: 15000
+      }
+    );
+
+    const place = response.data.results?.[0];
+
+    if (!place) {
+      return res.status(404).json({
+        success: false,
+        error: "Could not identify your current location."
+      });
+    }
+
+    const location =
+      place.city ||
+      place.town ||
+      place.village ||
+      place.suburb ||
+      place.county ||
+      place.formatted;
+
+    console.log("Current location detected:", location);
+
+    res.json({
+      success: true,
+      location,
+      formattedAddress: place.formatted,
+      latitude: Number(latitude),
+      longitude: Number(longitude)
+    });
+
+  } catch (error) {
+
+    console.error(
+      "REVERSE GEOCODING ERROR:",
+      error.response?.data || error.message
+    );
+
+    res.status(500).json({
+      success: false,
+      error:
+        error.response?.data?.message ||
+        error.response?.data?.error ||
+        "Unable to detect your location."
+    });
+
+  }
+
+});
+
+// =====================================
+// 9. SERVER HEALTH CHECK
 // =====================================
 
 app.get("/", (req, res) => {
+
   res.json({
     success: true,
     message: "MoodMap backend is running!"
   });
+
 });
 
 // =====================================
-// 9. START SERVER
+// 10. START SERVER
 // =====================================
 
 const PORT = process.env.PORT || 5000;
 
 app.listen(PORT, () => {
+
   console.log(
     `MoodMap backend running on port ${PORT}`
   );
+
 });

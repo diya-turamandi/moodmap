@@ -13,6 +13,8 @@ function InputForm() {
   });
 
   const [loading, setLoading] = useState(false);
+  const [locationLoading, setLocationLoading] = useState(false);
+  const [locationError, setLocationError] = useState("");
 
   // Handle input changes
   const handleChange = (e) => {
@@ -22,6 +24,96 @@ function InputForm() {
     });
   };
 
+  // Get current location
+  const handleCurrentLocation = () => {
+    setLocationError("");
+
+    if (!navigator.geolocation) {
+      setLocationError("Geolocation is not supported by your browser.");
+      return;
+    }
+
+    setLocationLoading(true);
+
+    navigator.geolocation.getCurrentPosition(
+      async (position) => {
+        try {
+          const latitude = position.coords.latitude;
+          const longitude = position.coords.longitude;
+
+          console.log("Latitude:", latitude);
+          console.log("Longitude:", longitude);
+
+          // Convert coordinates into readable location
+          const response = await fetch(
+            "http://localhost:5000/api/reverse-geocode",
+            {
+              method: "POST",
+              headers: {
+                "Content-Type": "application/json"
+              },
+              body: JSON.stringify({
+                latitude,
+                longitude
+              })
+            }
+          );
+
+          const data = await response.json();
+
+          if (!response.ok) {
+            throw new Error(
+              data.error || "Unable to detect location"
+            );
+          }
+
+          // Automatically fill location field
+          setForm((prev) => ({
+            ...prev,
+            location: data.location
+          }));
+
+          console.log("Detected location:", data.location);
+
+        } catch (error) {
+          console.error("Location error:", error);
+          setLocationError(error.message);
+
+        } finally {
+          setLocationLoading(false);
+        }
+      },
+
+      (error) => {
+        console.error("Geolocation error:", error);
+
+        if (error.code === 1) {
+          setLocationError(
+            "Location permission denied. Please allow location access."
+          );
+        } else if (error.code === 2) {
+          setLocationError(
+            "Your location is currently unavailable."
+          );
+        } else if (error.code === 3) {
+          setLocationError(
+            "Location request timed out. Please try again."
+          );
+        } else {
+          setLocationError("Unable to get your current location.");
+        }
+
+        setLocationLoading(false);
+      },
+
+      {
+        enableHighAccuracy: true,
+        timeout: 15000,
+        maximumAge: 0
+      }
+    );
+  };
+
   // Submit form
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -29,7 +121,6 @@ function InputForm() {
     try {
       setLoading(true);
 
-      // Send data to backend
       const res = await fetch(
         "http://localhost:5000/api/analyze-mood",
         {
@@ -46,10 +137,8 @@ function InputForm() {
         }
       );
 
-      // Read backend response
       const data = await res.json();
 
-      // Handle API errors
       if (!res.ok) {
         console.error("Backend error:", data);
         throw new Error(
@@ -59,7 +148,6 @@ function InputForm() {
 
       console.log("API DATA:", data);
 
-      // Navigate to results page
       navigate("/results", {
         state: {
           ...form,
@@ -123,7 +211,7 @@ function InputForm() {
             required
           />
 
-          {/* Available Time (in hours) */}
+          {/* Available Time */}
           <input
             type="number"
             name="time"
@@ -145,12 +233,44 @@ function InputForm() {
             required
           />
 
+          {/* Current Location Button */}
+          <button
+            type="button"
+            onClick={handleCurrentLocation}
+            disabled={locationLoading}
+            style={{
+              marginTop: "12px",
+              padding: "12px",
+              width: "100%",
+              cursor: locationLoading ? "wait" : "pointer",
+              borderRadius: "8px"
+            }}
+          >
+            {locationLoading
+              ? "Detecting location..."
+              : "📍 Use My Current Location"}
+          </button>
+
+          {/* Location Error */}
+          {locationError && (
+            <p
+              style={{
+                color: "red",
+                fontSize: "13px",
+                marginTop: "10px"
+              }}
+            >
+              {locationError}
+            </p>
+          )}
+
         </div>
 
+        {/* Submit */}
         <button
           className="btn"
           type="submit"
-          disabled={loading}
+          disabled={loading || locationLoading}
         >
           {loading
             ? "Finding places..."
