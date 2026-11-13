@@ -1,0 +1,320 @@
+/* =================================
+   MOODMAP - INPUT FORM
+================================= */
+
+.form-page {
+    min-height: 100vh;
+    padding: 65px 20px;
+    background:
+        radial-gradient(circle at 10% 10%, rgba(117, 69, 190, 0.2), transparent 35%),
+        radial-gradient(circle at 90% 80%, rgba(78, 104, 220, 0.15), transparent 35%),
+        #100d25;
+    font-family: 'Poppins', sans-serif;
+    color: white;
+}
+
+.form-wrapper {
+    max-width: 760px;
+    margin: auto;
+}
+
+/* HEADER */
+
+.form-header {
+    text-align: center;
+    margin-bottom: 40px;
+}
+
+.form-tag {
+    display: inline-block;
+    padding: 10px 17px;
+    border: 1px solid rgba(215, 165, 255, 0.3);
+    background: rgba(215, 165, 255, 0.08);
+    border-radius: 30px;
+    color: #d7a5ff;
+    font-size: 10px;
+    letter-spacing: 2px;
+}
+
+.form-header h1 {
+    font-size: clamp(32px, 5vw, 46px);
+    margin: 22px 0 12px;
+    letter-spacing: -1.5px;
+}
+
+.form-header h1 span {
+    background: linear-gradient(90deg, #d7a5ff, #7b91ff);
+    background-clip: text;
+    -webkit-background-clip: text;
+    color: transparent;
+}
+
+.form-header p {
+    padding: 0 !important;
+    font-family: inherit !important;
+    color: #aaa3bf;
+    font-size: 14px;
+}
+
+/* MAIN FORM */
+
+.mood-form {
+    padding: 35px;
+    border-radius: 25px;
+    background: rgba(255, 255, 255, 0.055);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    backdrop-filter: blur(20px);
+    box-shadow: 0 25px 70px rgba(0, 0, 0, 0.25);
+}
+
+.form-section {
+    margin-bottom: 38px;
+}
+
+.field-heading {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 22px;
+}
+
+.field-step {
+    color: #b58ae8;
+    font-size: 10px;
+    letter-spacing: 2px;
+    font-weight: 600;
+}
+
+.field-heading h2 {
+    font-size: 19px;
+    margin: 8px 0 0;
+}
+
+.field-icon {
+    font-size: 27px;
+}
+
+/* MOOD OPTIONS */
+
+.mood-options {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 12px;
+}
+
+.mood-option {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 8px;
+    padding: 20px 8px;
+    border-radius: 17px;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    background: rgba(255, 255, 255, 0.035);
+    color: white;
+    font-family: inherit;
+    cursor: pointer;
+    transition: 0.3s;
+}
+
+.mood-option:hover {
+    transform: translateY(-4px);
+    background: rgba(162, 111, 226, 0.12);
+    border-color: rgba(215, 165, 255, 0.5);
+}
+
+.mood-option.selected {
+    background: rgba(155, 101, 224, 0.2);
+    border: 1px solid #c18af7;
+    box-shadow: 0 0 20px rgba(174, 113, 239, 0.12);
+}
+
+.option-emoji {
+    font-size: 31px;
+}
+
+.option-label {
+    font-size: 13px;
+    font-weight: 600;
+}
+
+.option-description {
+    color: #aaa3bf;
+    font-size: 9px;
+    text-align: center;
+}
+
+/* INPUTS */
+
+.preferences-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 20px;
+}
+
+.input-group {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.input-group label {
+    font-size: 13px;
+    font-weight: 500;
+    color: #e8e0f5;
+}
+
+.input-with-icon {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 0 16px;
+    height: 53px;
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    background: rgba(255, 255, 255, 0.05);
+    border-radius: 12px;
+}
+
+.input-with-icon span {
+    color: #c69af5;
+    font-size: 18px;
+}
+
+.input-with-icon input {
+    width: 100%;
+    border: none;
+    outline: none;
+    background: transparent;
+    color: white;
+    font-family: inherit;
+    font-size: 14px;
+}
+
+.input-group input::placeholder {
+    color: #79738c;
+}
+
+.input-group small {
+    font-size: 10px;
+    color: #8f88a6;
+}
+
+/* LOCATION */
+
+.location-input {
+    width: 100%;
+    box-sizing: border-box;
+    height: 53px;
+    padding: 0 16px;
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    border-radius: 12px;
+    color: white;
+    outline: none;
+    font-family: inherit;
+    font-size: 13px;
+}
+
+.location-input:focus,
+.input-with-icon:focus-within {
+    border-color: #b58ae8;
+    box-shadow: 0 0 12px rgba(181, 138, 232, 0.12);
+}
+
+.location-button {
+    padding: 13px;
+    border-radius: 12px;
+    border: 1px solid rgba(181, 138, 232, 0.35);
+    background: rgba(181, 138, 232, 0.09);
+    color: #d7b6ff;
+    font-family: inherit;
+    font-size: 12px;
+    cursor: pointer;
+    transition: 0.3s;
+}
+
+.location-button:hover:not(:disabled) {
+    background: rgba(181, 138, 232, 0.2);
+}
+
+.location-button:disabled {
+    opacity: 0.6;
+    cursor: wait;
+}
+
+.location-error {
+    padding: 0 !important;
+    margin: 0;
+    color: #ff929e;
+    font-family: inherit;
+    font-size: 12px;
+}
+
+/* SUBMIT BUTTON */
+
+.find-button {
+    width: 100%;
+    padding: 17px;
+    border: none;
+    border-radius: 14px;
+    background: linear-gradient(100deg, #a65de5, #6577ef);
+    color: white;
+    font-family: inherit;
+    font-size: 15px;
+    font-weight: 600;
+    cursor: pointer;
+    box-shadow: 0 8px 25px rgba(133, 86, 220, 0.2);
+    transition: 0.3s;
+}
+
+.find-button span {
+    margin-left: 12px;
+    font-size: 18px;
+}
+
+.find-button:hover:not(:disabled) {
+    transform: translateY(-3px);
+    box-shadow: 0 12px 30px rgba(133, 86, 220, 0.35);
+}
+
+.find-button:disabled {
+    opacity: 0.6;
+    cursor: wait;
+}
+
+.form-footer-note {
+    text-align: center;
+    color: #8f88a6;
+    font-family: inherit;
+    font-size: 11px;
+    padding: 0 !important;
+    margin: 20px 0 0;
+}
+
+/* RESPONSIVE */
+
+@media (max-width: 600px) {
+    .form-page {
+        padding: 40px 14px;
+    }
+
+    .mood-form {
+        padding: 23px 17px;
+    }
+
+    .mood-options {
+        grid-template-columns: repeat(2, 1fr);
+    }
+
+    .preferences-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .form-header h1 {
+        font-size: 32px;
+    }
+
+    .field-heading h2 {
+        font-size: 16px;
+    }
+}

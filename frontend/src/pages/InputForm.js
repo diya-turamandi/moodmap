@@ -1,6 +1,7 @@
 
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
+import "./InputForm.css";
 
 function InputForm() {
   const navigate = useNavigate();
@@ -16,7 +17,13 @@ function InputForm() {
   const [locationLoading, setLocationLoading] = useState(false);
   const [locationError, setLocationError] = useState("");
 
-  // Handle input changes
+  const moods = [
+    { value: "happy", emoji: "😊", label: "Happy", description: "Feeling good" },
+    { value: "sad", emoji: "😔", label: "Sad", description: "Need a little joy" },
+    { value: "stressed", emoji: "😫", label: "Stressed", description: "Need to unwind" },
+    { value: "bored", emoji: "😐", label: "Bored", description: "Need some excitement" }
+  ];
+
   const handleChange = (e) => {
     setForm({
       ...form,
@@ -24,7 +31,7 @@ function InputForm() {
     });
   };
 
-  // Get current location
+  // CURRENT LOCATION
   const handleCurrentLocation = () => {
     setLocationError("");
 
@@ -41,10 +48,6 @@ function InputForm() {
           const latitude = position.coords.latitude;
           const longitude = position.coords.longitude;
 
-          console.log("Latitude:", latitude);
-          console.log("Longitude:", longitude);
-
-          // Convert coordinates into readable location
           const response = await fetch(
             "http://localhost:5000/api/reverse-geocode",
             {
@@ -52,33 +55,24 @@ function InputForm() {
               headers: {
                 "Content-Type": "application/json"
               },
-              body: JSON.stringify({
-                latitude,
-                longitude
-              })
+              body: JSON.stringify({ latitude, longitude })
             }
           );
 
           const data = await response.json();
 
           if (!response.ok) {
-            throw new Error(
-              data.error || "Unable to detect location"
-            );
+            throw new Error(data.error || "Unable to detect location");
           }
 
-          // Automatically fill location field
           setForm((prev) => ({
             ...prev,
             location: data.location
           }));
 
-          console.log("Detected location:", data.location);
-
         } catch (error) {
           console.error("Location error:", error);
           setLocationError(error.message);
-
         } finally {
           setLocationLoading(false);
         }
@@ -88,17 +82,11 @@ function InputForm() {
         console.error("Geolocation error:", error);
 
         if (error.code === 1) {
-          setLocationError(
-            "Location permission denied. Please allow location access."
-          );
+          setLocationError("Location permission denied. Please allow location access.");
         } else if (error.code === 2) {
-          setLocationError(
-            "Your location is currently unavailable."
-          );
+          setLocationError("Your location is currently unavailable.");
         } else if (error.code === 3) {
-          setLocationError(
-            "Location request timed out. Please try again."
-          );
+          setLocationError("Location request timed out. Please try again.");
         } else {
           setLocationError("Unable to get your current location.");
         }
@@ -114,7 +102,7 @@ function InputForm() {
     );
   };
 
-  // Submit form
+  // SUBMIT FORM
   const handleSubmit = async (e) => {
     e.preventDefault();
 
@@ -140,20 +128,14 @@ function InputForm() {
       const data = await res.json();
 
       if (!res.ok) {
-        console.error("Backend error:", data);
-        throw new Error(
-          data.error || "Failed to fetch suggestions"
-        );
+        throw new Error(data.error || "Failed to fetch suggestions");
       }
-
-      console.log("API DATA:", data);
 
       navigate("/results", {
         state: {
           ...form,
           availableTime: Number(form.time),
-          suggestion:
-            data?.suggestion || "No suggestion found",
+          suggestion: data?.suggestion || "No suggestion found",
           places: data?.places || []
         }
       });
@@ -161,123 +143,179 @@ function InputForm() {
     } catch (err) {
       console.error("Error:", err);
       alert(err.message || "Server error. Try again!");
-
     } finally {
       setLoading(false);
     }
   };
 
   return (
-    <div
-      className="inputbox"
-      style={{
-        maxWidth: "420px",
-        margin: "60px auto"
-      }}
-    >
-      <h2>Tell Us Your Mood 💭</h2>
+    <div className="form-page">
 
-      <form onSubmit={handleSubmit}>
+      <div className="form-wrapper">
 
-        <div
-          className="glass-box"
-          style={{ marginBottom: "20px" }}
-        >
+        {/* HEADER */}
+        <div className="form-header">
+          <span className="form-tag">✦ YOUR PERSONAL EXPERIENCE PLANNER</span>
 
-          {/* Mood */}
-          <select
-            name="mood"
-            value={form.mood}
-            onChange={handleChange}
-            required
-          >
-            <option value="">Select Mood</option>
-            <option value="happy">Happy 😊</option>
-            <option value="sad">Sad 😔</option>
-            <option value="stressed">Stressed 😫</option>
-            <option value="bored">Bored 😐</option>
-          </select>
+          <h1>
+            Let's Find Your <span>MoodMap.</span>
+          </h1>
 
-          <div style={{ height: "20px" }}></div>
-
-          {/* Budget */}
-          <input
-            type="number"
-            name="budget"
-            value={form.budget}
-            placeholder="Budget ₹"
-            min="0"
-            onChange={handleChange}
-            required
-          />
-
-          {/* Available Time */}
-          <input
-            type="number"
-            name="time"
-            value={form.time}
-            placeholder="Available time (in hours)"
-            min="0.5"
-            step="0.5"
-            onChange={handleChange}
-            required
-          />
-
-          {/* Location */}
-          <input
-            type="text"
-            name="location"
-            value={form.location}
-            placeholder="Enter location"
-            onChange={handleChange}
-            required
-          />
-
-          {/* Current Location Button */}
-          <button
-            type="button"
-            onClick={handleCurrentLocation}
-            disabled={locationLoading}
-            style={{
-              marginTop: "12px",
-              padding: "12px",
-              width: "100%",
-              cursor: locationLoading ? "wait" : "pointer",
-              borderRadius: "8px"
-            }}
-          >
-            {locationLoading
-              ? "Detecting location..."
-              : "📍 Use My Current Location"}
-          </button>
-
-          {/* Location Error */}
-          {locationError && (
-            <p
-              style={{
-                color: "red",
-                fontSize: "13px",
-                marginTop: "10px"
-              }}
-            >
-              {locationError}
-            </p>
-          )}
-
+          <p>
+            A little about how you feel is all we need
+            to plan something wonderful.
+          </p>
         </div>
 
-        {/* Submit */}
-        <button
-          className="btn"
-          type="submit"
-          disabled={loading || locationLoading}
-        >
-          {loading
-            ? "Finding places..."
-            : "Find Suggestions 🔍"}
-        </button>
+        <form onSubmit={handleSubmit} className="mood-form">
 
-      </form>
+          {/* MOOD SELECTION */}
+          <div className="form-section">
+            <div className="field-heading">
+              <div>
+                <span className="field-step">01 / YOUR FEELINGS</span>
+                <h2>How are you feeling today?</h2>
+              </div>
+              <span className="field-icon">💭</span>
+            </div>
+
+            <div className="mood-options">
+              {moods.map((mood) => (
+                <button
+                  type="button"
+                  key={mood.value}
+                  className={`mood-option ${
+                    form.mood === mood.value ? "selected" : ""
+                  }`}
+                  onClick={() =>
+                    setForm({ ...form, mood: mood.value })
+                  }
+                  aria-pressed={form.mood === mood.value}
+                >
+                  <span className="option-emoji">{mood.emoji}</span>
+                  <span className="option-label">{mood.label}</span>
+                  <span className="option-description">
+                    {mood.description}
+                  </span>
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* BUDGET AND TIME */}
+          <div className="form-section">
+            <div className="field-heading">
+              <div>
+                <span className="field-step">02 / YOUR PLAN</span>
+                <h2>Let's work with your preferences.</h2>
+              </div>
+              <span className="field-icon">✨</span>
+            </div>
+
+            <div className="preferences-grid">
+
+              <div className="input-group">
+                <label htmlFor="budget">Your budget</label>
+                <div className="input-with-icon">
+                  <span>₹</span>
+                  <input
+                    id="budget"
+                    type="number"
+                    name="budget"
+                    value={form.budget}
+                    placeholder="e.g. 500"
+                    min="1"
+                    onChange={handleChange}
+                    required
+                  />
+                </div>
+                <small>How much would you like to spend?</small>
+              </div>
+
+              <div className="input-group">
+                <label htmlFor="time">Available time</label>
+                <div className="input-with-icon">
+                  <span>◷</span>
+                  <input
+                    id="time"
+                    type="number"
+                    name="time"
+                    value={form.time}
+                    placeholder="e.g. 2"
+                    min="0.5"
+                    step="0.5"
+                    onChange={handleChange}
+                    required
+                  />
+                </div>
+                <small>Time available in hours</small>
+              </div>
+
+            </div>
+          </div>
+
+          {/* LOCATION */}
+          <div className="form-section">
+            <div className="field-heading">
+              <div>
+                <span className="field-step">03 / YOUR LOCATION</span>
+                <h2>Where should we take you?</h2>
+              </div>
+              <span className="field-icon">📍</span>
+            </div>
+
+            <div className="input-group">
+              <label htmlFor="location">Your location</label>
+
+              <input
+                id="location"
+                className="location-input"
+                type="text"
+                name="location"
+                value={form.location}
+                placeholder="Enter city or area..."
+                onChange={handleChange}
+                required
+              />
+
+              <button
+                type="button"
+                className="location-button"
+                onClick={handleCurrentLocation}
+                disabled={locationLoading}
+              >
+                {locationLoading
+                  ? "◌ Detecting your location..."
+                  : "📍 Use My Current Location"}
+              </button>
+
+              {locationError && (
+                <p className="location-error" role="alert">
+                  {locationError}
+                </p>
+              )}
+            </div>
+          </div>
+
+          {/* SUBMIT */}
+          <button
+            className="find-button"
+            type="submit"
+            disabled={loading || locationLoading}
+          >
+            {loading ? (
+              "Finding your experiences..."
+            ) : (
+              <>Find My MoodMap <span>→</span></>
+            )}
+          </button>
+
+          <p className="form-footer-note">
+            ✦ Your next memorable experience is just a click away.
+          </p>
+
+        </form>
+      </div>
     </div>
   );
 }
