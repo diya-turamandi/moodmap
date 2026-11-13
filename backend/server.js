@@ -302,7 +302,9 @@ app.post("/api/analyze-mood", async (req, res) => {
       mood,
       location,
       budget,
-      availableTime
+      availableTime,
+      latitude: userLatitude,
+      longitude: userLongitude
     } = req.body;
 
     // Validate input
@@ -355,34 +357,86 @@ app.post("/api/analyze-mood", async (req, res) => {
     console.log("Mood:", selectedMood);
     console.log("Categories:", categories);
 
-    // STEP 2: Convert location into coordinates
+    // STEP 2: Get exact coordinates
 
-    const geoResponse = await axios.get(
-      "https://api.geoapify.com/v1/geocode/search",
-      {
-        params: {
-          text: `${location}, Karnataka, India`,
-          format: "json",
-          limit: 1,
-          apiKey: process.env.GEOAPIFY_API_KEY
-        },
-        timeout: 15000
-      }
-    );
+    let latitude;
+    let longitude;
 
-    const coordinates = geoResponse.data.results?.[0];
+    const hasLatitude =
+      userLatitude !== undefined && userLatitude !== null;
 
-    if (!coordinates) {
-      return res.status(404).json({
+    const hasLongitude =
+      userLongitude !== undefined && userLongitude !== null;
+
+    // Both coordinates must be provided together.
+    if (hasLatitude !== hasLongitude) {
+      return res.status(400).json({
         success: false,
-        error: "Location not found. Please enter a valid city."
+        error: "Both latitude and longitude are required."
       });
     }
 
-    const latitude = coordinates.lat;
-    const longitude = coordinates.lon;
+    if (hasLatitude && hasLongitude) {
 
-    console.log("Coordinates:", latitude, longitude);
+      latitude = Number(userLatitude);
+      longitude = Number(userLongitude);
+
+      if (
+        !Number.isFinite(latitude) ||
+        !Number.isFinite(longitude) ||
+        latitude < -90 ||
+        latitude > 90 ||
+        longitude < -180 ||
+        longitude > 180
+      ) {
+        return res.status(400).json({
+          success: false,
+          error: "Invalid location coordinates."
+        });
+      }
+
+      console.log(
+        "Using exact browser coordinates:",
+        latitude,
+        longitude
+      );
+
+    } else {
+
+      // If the user manually entered a location,
+      // convert that location into coordinates.
+
+      const geoResponse = await axios.get(
+        "https://api.geoapify.com/v1/geocode/search",
+        {
+          params: {
+            text: `${location}, Karnataka, India`,
+            format: "json",
+            limit: 1,
+            apiKey: process.env.GEOAPIFY_API_KEY
+          },
+          timeout: 15000
+        }
+      );
+
+      const coordinates = geoResponse.data.results?.[0];
+
+      if (!coordinates) {
+        return res.status(404).json({
+          success: false,
+          error: "Location not found. Please enter a valid location."
+        });
+      }
+
+      latitude = coordinates.lat;
+      longitude = coordinates.lon;
+
+      console.log(
+        "Coordinates from manual location:",
+        latitude,
+        longitude
+      );
+    }
 
     // STEP 3: Fetch real nearby places
 
@@ -524,9 +578,7 @@ app.post("/api/analyze-mood", async (req, res) => {
 // =====================================
 
 app.post("/api/reverse-geocode", async (req, res) => {
-
   try {
-
     const { latitude, longitude } = req.body;
 
     if (
@@ -552,14 +604,12 @@ app.post("/api/reverse-geocode", async (req, res) => {
       });
     }
 
-    // Convert coordinates into readable address
-
     const response = await axios.get(
       "https://api.geoapify.com/v1/geocode/reverse",
       {
         params: {
-          lat: latitude,
-          lon: longitude,
+          lat: Number(latitude),
+          lon: Number(longitude),
           format: "json",
           apiKey: process.env.GEOAPIFY_API_KEY
         },
@@ -576,26 +626,39 @@ app.post("/api/reverse-geocode", async (req, res) => {
       });
     }
 
-    const location =
-      place.city ||
-      place.town ||
-      place.village ||
-      place.suburb ||
-      place.county ||
-      place.formatted;
+    // Prefer Geoapify's complete formatted address.
+    // Build a detailed fallback if it is unavailable.
+    const addressParts = [
+      place.housenumber,
+      place.street,
+      place.name,
+      place.suburb,
+      place.neighbourhood,
+      place.district,
+      place.city || place.town || place.village,
+      place.state,
+      place.postcode,
+      place.country
+    ];
 
-    console.log("Current location detected:", location);
+    const detailedAddress = [
+      ...new Set(addressParts.filter(Boolean))
+    ].join(", ");
+
+    const formattedAddress =
+      place.formatted || detailedAddress;
+
+    console.log("Detailed location:", formattedAddress);
 
     res.json({
       success: true,
-      location,
-      formattedAddress: place.formatted,
+      location: formattedAddress,
+      formattedAddress,
       latitude: Number(latitude),
       longitude: Number(longitude)
     });
 
   } catch (error) {
-
     console.error(
       "REVERSE GEOCODING ERROR:",
       error.response?.data || error.message
@@ -608,9 +671,7 @@ app.post("/api/reverse-geocode", async (req, res) => {
         error.response?.data?.error ||
         "Unable to detect your location."
     });
-
   }
-
 });
 
 // =====================================

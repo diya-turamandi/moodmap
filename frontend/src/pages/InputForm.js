@@ -13,6 +13,9 @@ function InputForm() {
     location: ""
   });
 
+  const [currentCoordinates, setCurrentCoordinates] = useState(null);
+  const [locationAccuracy, setLocationAccuracy] = useState(null);
+
   const [loading, setLoading] = useState(false);
   const [locationLoading, setLocationLoading] = useState(false);
   const [locationError, setLocationError] = useState("");
@@ -24,16 +27,28 @@ function InputForm() {
     { value: "bored", emoji: "😐", label: "Bored", description: "Need some excitement" }
   ];
 
+  // HANDLE INPUT CHANGES
   const handleChange = (e) => {
-    setForm({
-      ...form,
-      [e.target.name]: e.target.value
-    });
+    const { name, value } = e.target;
+
+    setForm((prev) => ({
+      ...prev,
+      [name]: value
+    }));
+
+    // If the user edits the location manually,
+    // stop using the previously detected coordinates.
+    if (name === "location") {
+      setCurrentCoordinates(null);
+      setLocationAccuracy(null);
+      setLocationError("");
+    }
   };
 
-  // CURRENT LOCATION
+  // GET CURRENT LOCATION
   const handleCurrentLocation = () => {
     setLocationError("");
+    setLocationAccuracy(null);
 
     if (!navigator.geolocation) {
       setLocationError("Geolocation is not supported by your browser.");
@@ -47,6 +62,11 @@ function InputForm() {
         try {
           const latitude = position.coords.latitude;
           const longitude = position.coords.longitude;
+          const accuracy = position.coords.accuracy;
+
+          console.log("Detected latitude:", latitude);
+          console.log("Detected longitude:", longitude);
+          console.log("Location accuracy:", accuracy, "meters");
 
           const response = await fetch(
             "http://localhost:5000/api/reverse-geocode",
@@ -55,24 +75,42 @@ function InputForm() {
               headers: {
                 "Content-Type": "application/json"
               },
-              body: JSON.stringify({ latitude, longitude })
+              body: JSON.stringify({
+                latitude,
+                longitude
+              })
             }
           );
 
           const data = await response.json();
 
           if (!response.ok) {
-            throw new Error(data.error || "Unable to detect location");
+            throw new Error(
+              data.error || "Unable to detect your location"
+            );
           }
 
+          // Save the original GPS coordinates.
+          setCurrentCoordinates({
+            latitude,
+            longitude
+          });
+
+          setLocationAccuracy(accuracy);
+
+          // Display the readable address.
           setForm((prev) => ({
             ...prev,
-            location: data.location
+            location:
+              data.formattedAddress ||
+              data.location ||
+              ""
           }));
 
         } catch (error) {
           console.error("Location error:", error);
           setLocationError(error.message);
+          setCurrentCoordinates(null);
         } finally {
           setLocationLoading(false);
         }
@@ -82,11 +120,17 @@ function InputForm() {
         console.error("Geolocation error:", error);
 
         if (error.code === 1) {
-          setLocationError("Location permission denied. Please allow location access.");
+          setLocationError(
+            "Location permission denied. Please allow location access."
+          );
         } else if (error.code === 2) {
-          setLocationError("Your location is currently unavailable.");
+          setLocationError(
+            "Your location is currently unavailable. Check your device location settings."
+          );
         } else if (error.code === 3) {
-          setLocationError("Location request timed out. Please try again.");
+          setLocationError(
+            "Location request timed out. Please try again."
+          );
         } else {
           setLocationError("Unable to get your current location.");
         }
@@ -96,7 +140,7 @@ function InputForm() {
 
       {
         enableHighAccuracy: true,
-        timeout: 15000,
+        timeout: 30000,
         maximumAge: 0
       }
     );
@@ -106,8 +150,34 @@ function InputForm() {
   const handleSubmit = async (e) => {
     e.preventDefault();
 
+    if (!form.mood) {
+      alert("Please select your mood.");
+      return;
+    }
+
+    if (!form.location.trim()) {
+      alert("Please enter or detect your location.");
+      return;
+    }
+
     try {
       setLoading(true);
+
+      const requestBody = {
+        mood: form.mood,
+        location: form.location,
+        budget: Number(form.budget),
+        availableTime: Number(form.time),
+
+        // Send the original browser coordinates
+        // when the user selected current location.
+        ...(currentCoordinates && {
+          latitude: currentCoordinates.latitude,
+          longitude: currentCoordinates.longitude
+        })
+      };
+
+      console.log("MoodMap request:", requestBody);
 
       const res = await fetch(
         "http://localhost:5000/api/analyze-mood",
@@ -116,27 +186,25 @@ function InputForm() {
           headers: {
             "Content-Type": "application/json"
           },
-          body: JSON.stringify({
-            mood: form.mood,
-            location: form.location,
-            budget: Number(form.budget),
-            availableTime: Number(form.time)
-          })
+          body: JSON.stringify(requestBody)
         }
       );
 
       const data = await res.json();
 
       if (!res.ok) {
-        throw new Error(data.error || "Failed to fetch suggestions");
+        throw new Error(
+          data.error || "Failed to fetch suggestions"
+        );
       }
 
       navigate("/results", {
         state: {
           ...form,
           availableTime: Number(form.time),
-          suggestion: data?.suggestion || "No suggestion found",
-          places: data?.places || []
+          coordinates: data.coordinates || currentCoordinates,
+          suggestion: data.suggestion || "No suggestion found",
+          places: data.places || []
         }
       });
 
@@ -150,12 +218,13 @@ function InputForm() {
 
   return (
     <div className="form-page">
-
       <div className="form-wrapper">
 
         {/* HEADER */}
         <div className="form-header">
-          <span className="form-tag">✦ YOUR PERSONAL EXPERIENCE PLANNER</span>
+          <span className="form-tag">
+            ✦ YOUR PERSONAL EXPERIENCE PLANNER
+          </span>
 
           <h1>
             Let's Find Your <span>MoodMap.</span>
@@ -188,12 +257,21 @@ function InputForm() {
                     form.mood === mood.value ? "selected" : ""
                   }`}
                   onClick={() =>
-                    setForm({ ...form, mood: mood.value })
+                    setForm((prev) => ({
+                      ...prev,
+                      mood: mood.value
+                    }))
                   }
                   aria-pressed={form.mood === mood.value}
                 >
-                  <span className="option-emoji">{mood.emoji}</span>
-                  <span className="option-label">{mood.label}</span>
+                  <span className="option-emoji">
+                    {mood.emoji}
+                  </span>
+
+                  <span className="option-label">
+                    {mood.label}
+                  </span>
+
                   <span className="option-description">
                     {mood.description}
                   </span>
@@ -216,6 +294,7 @@ function InputForm() {
 
               <div className="input-group">
                 <label htmlFor="budget">Your budget</label>
+
                 <div className="input-with-icon">
                   <span>₹</span>
                   <input
@@ -229,11 +308,15 @@ function InputForm() {
                     required
                   />
                 </div>
-                <small>How much would you like to spend?</small>
+
+                <small>
+                  How much would you like to spend?
+                </small>
               </div>
 
               <div className="input-group">
                 <label htmlFor="time">Available time</label>
+
                 <div className="input-with-icon">
                   <span>◷</span>
                   <input
@@ -248,6 +331,7 @@ function InputForm() {
                     required
                   />
                 </div>
+
                 <small>Time available in hours</small>
               </div>
 
@@ -273,7 +357,7 @@ function InputForm() {
                 type="text"
                 name="location"
                 value={form.location}
-                placeholder="Enter city or area..."
+                placeholder="Enter city, area or address..."
                 onChange={handleChange}
                 required
               />
@@ -288,6 +372,13 @@ function InputForm() {
                   ? "◌ Detecting your location..."
                   : "📍 Use My Current Location"}
               </button>
+
+              {locationAccuracy !== null && (
+                <small>
+                  Location detected. GPS accuracy: approximately{" "}
+                  {Math.round(locationAccuracy)} metres.
+                </small>
+              )}
 
               {locationError && (
                 <p className="location-error" role="alert">
@@ -306,7 +397,9 @@ function InputForm() {
             {loading ? (
               "Finding your experiences..."
             ) : (
-              <>Find My MoodMap <span>→</span></>
+              <>
+                Find My MoodMap <span>→</span>
+              </>
             )}
           </button>
 
